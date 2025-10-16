@@ -1,11 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
-import bcrypt from "bcryptjs";
 
 export interface User {
   id: string;
   name: string;
   mobile_number: string;
-  is_admin: boolean;
+  role: string;
 }
 
 export const registerUser = async (
@@ -14,9 +13,9 @@ export const registerUser = async (
   password: string
 ): Promise<{ user: User | null; error: string | null }> => {
   try {
-    // Validate mobile number
-    if (!/^\d{10}$/.test(mobileNumber)) {
-      return { user: null, error: "Mobile number must be exactly 10 digits" };
+    // Validate mobile number (Indian format)
+    if (!/^[6-9]\d{9}$/.test(mobileNumber)) {
+      return { user: null, error: "Mobile number must be a valid 10-digit Indian number starting with 6-9" };
     }
 
     // Validate password
@@ -29,44 +28,59 @@ export const registerUser = async (
     }
 
     // Check if mobile number already exists
-    const { data: existingUser } = await supabase
-      .from("users")
+    const { data: existingProfile } = await supabase
+      .from("profiles")
       .select("id")
       .eq("mobile_number", mobileNumber)
-      .single();
+      .maybeSingle();
 
-    if (existingUser) {
+    if (existingProfile) {
       return { user: null, error: "Mobile number already registered" };
     }
 
-    // Hash password
-    const password_hash = await bcrypt.hash(password, 10);
+    // Create user with Supabase Auth using mobile as email
+    const email = `${mobileNumber}@vimeet.app`;
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          mobile_number: mobileNumber
+        },
+        emailRedirectTo: `${window.location.origin}/`
+      }
+    });
 
-    // Create user
-    const { data, error } = await supabase
-      .from("users")
-      .insert({
-        name,
-        mobile_number: mobileNumber,
-        password_hash,
-        is_admin: false
-      })
-      .select()
+    if (authError) throw authError;
+    if (!authData.user) throw new Error("Registration failed");
+
+    // Fetch the created profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", authData.user.id)
       .single();
 
-    if (error) throw error;
+    // Get user role
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authData.user.id)
+      .maybeSingle();
 
     return { 
       user: {
-        id: data.id,
-        name: data.name,
-        mobile_number: data.mobile_number,
-        is_admin: data.is_admin
+        id: authData.user.id,
+        name: profile?.name || name,
+        mobile_number: profile?.mobile_number || mobileNumber,
+        role: roleData?.role || 'user'
       }, 
       error: null 
     };
   } catch (error: any) {
-    return { user: null, error: error.message };
+    console.error("Registration error:", error);
+    return { user: null, error: "Registration failed. Please try again." };
   }
 };
 
@@ -75,33 +89,45 @@ export const loginUser = async (
   password: string
 ): Promise<{ user: User | null; error: string | null }> => {
   try {
-    // Get user by mobile number
-    const { data: user, error } = await supabase
-      .from("users")
+    // Sign in with Supabase Auth using mobile as email
+    const email = `${mobileNumber}@vimeet.app`;
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (authError) {
+      return { user: null, error: "Invalid mobile number or password" };
+    }
+    if (!authData.user) {
+      return { user: null, error: "Invalid mobile number or password" };
+    }
+
+    // Fetch profile
+    const { data: profile } = await supabase
+      .from("profiles")
       .select("*")
-      .eq("mobile_number", mobileNumber)
+      .eq("id", authData.user.id)
       .single();
 
-    if (error || !user) {
-      return { user: null, error: "Invalid mobile number or password" };
-    }
-
-    // Verify password
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    if (!passwordMatch) {
-      return { user: null, error: "Invalid mobile number or password" };
-    }
+    // Get user role
+    const { data: roleData } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", authData.user.id)
+      .maybeSingle();
 
     return { 
       user: {
-        id: user.id,
-        name: user.name,
-        mobile_number: user.mobile_number,
-        is_admin: user.is_admin
+        id: authData.user.id,
+        name: profile?.name || '',
+        mobile_number: profile?.mobile_number || '',
+        role: roleData?.role || 'user'
       }, 
       error: null 
     };
   } catch (error: any) {
-    return { user: null, error: error.message };
+    console.error("Login error:", error);
+    return { user: null, error: "Login failed. Please try again." };
   }
 };

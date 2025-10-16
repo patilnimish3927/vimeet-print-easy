@@ -42,7 +42,7 @@ export default function Admin() {
       navigate("/auth");
       return;
     }
-    if (!user.is_admin) {
+    if (user.role !== 'admin') {
       navigate("/upload");
       return;
     }
@@ -205,7 +205,7 @@ export default function Admin() {
     navigate("/auth");
   };
 
-  if (!user || !user.is_admin) {
+  if (!user || user.role !== 'admin') {
     return null;
   }
 

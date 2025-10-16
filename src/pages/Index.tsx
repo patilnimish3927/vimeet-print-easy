@@ -12,7 +12,7 @@ const Index = () => {
 
   useEffect(() => {
     if (user) {
-      if (user.is_admin) {
+      if (user.role === 'admin') {
         navigate("/admin");
       } else {
         navigate("/upload");

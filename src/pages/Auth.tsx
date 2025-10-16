@@ -49,7 +49,7 @@ export default function Auth() {
         description: `Welcome back, ${user.name}!`
       });
       
-      if (user.is_admin) {
+      if (user.role === 'admin') {
         navigate("/admin");
       } else {
         navigate("/upload");

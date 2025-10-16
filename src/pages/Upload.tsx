@@ -29,7 +29,7 @@ export default function Upload() {
       navigate("/auth");
       return;
     }
-    if (user.is_admin) {
+    if (user.role === 'admin') {
       navigate("/admin");
       return;
     }
@@ -177,7 +177,7 @@ export default function Upload() {
     navigate("/auth");
   };
 
-  if (!user || user.is_admin) {
+  if (!user || user.role === 'admin') {
     return null;
   }
 
