@@ -39,6 +39,11 @@ export const registerUser = async (
     });
 
     if (signUpError) {
+      // Check if user already exists
+      if (signUpError.message.includes("already registered") || 
+          signUpError.message.includes("Database error saving new user")) {
+        return { user: null, error: "This mobile number is already registered. Please login instead." };
+      }
       return { user: null, error: signUpError.message };
     }
 
