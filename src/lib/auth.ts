@@ -13,74 +13,57 @@ export const registerUser = async (
   password: string
 ): Promise<{ user: User | null; error: string | null }> => {
   try {
-    // Validate mobile number (Indian format)
-    if (!/^[6-9]\d{9}$/.test(mobileNumber)) {
-      return { user: null, error: "Mobile number must be a valid 10-digit Indian number starting with 6-9" };
+    // Validate mobile number
+    if (!mobileNumber || mobileNumber.length < 10) {
+      return { user: null, error: "Invalid mobile number" };
     }
 
     // Validate password
-    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{6,}$/;
-    if (!passwordRegex.test(password)) {
-      return { 
-        user: null, 
-        error: "Password must be at least 6 characters with at least one letter, one number, and one special character" 
-      };
+    if (!password || password.length < 6) {
+      return { user: null, error: "Password must be at least 6 characters" };
     }
 
-    // Check if mobile number already exists
-    const { data: existingProfile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("mobile_number", mobileNumber)
-      .maybeSingle();
+    // Use mobile number as email format for Supabase auth
+    const email = `${mobileNumber}@printapp.local`;
 
-    if (existingProfile) {
-      return { user: null, error: "Mobile number already registered" };
-    }
-
-    // Create user with Supabase Auth using mobile as email
-    const email = `${mobileNumber}@vimeet.app`;
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    // Sign up with Supabase auth
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           name,
-          mobile_number: mobileNumber
+          mobile_number: mobileNumber,
         },
-        emailRedirectTo: `${window.location.origin}/`
-      }
+      },
     });
 
-    if (authError) throw authError;
-    if (!authData.user) throw new Error("Registration failed");
+    if (signUpError) {
+      return { user: null, error: signUpError.message };
+    }
 
-    // Fetch the created profile
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", authData.user.id)
-      .single();
+    if (!data.user) {
+      return { user: null, error: "Registration failed" };
+    }
 
-    // Get user role
+    // Fetch user role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", authData.user.id)
-      .maybeSingle();
+      .eq("user_id", data.user.id)
+      .single();
 
-    return { 
+    return {
       user: {
-        id: authData.user.id,
-        name: profile?.name || name,
-        mobile_number: profile?.mobile_number || mobileNumber,
-        role: roleData?.role || 'user'
-      }, 
-      error: null 
+        id: data.user.id,
+        name,
+        mobile_number: mobileNumber,
+        role: roleData?.role || 'user',
+      },
+      error: null,
     };
-  } catch (error: any) {
-    console.error("Registration error:", error);
-    return { user: null, error: "Registration failed. Please try again." };
+  } catch (err) {
+    return { user: null, error: "An unexpected error occurred during registration" };
   }
 };
 
@@ -89,45 +72,47 @@ export const loginUser = async (
   password: string
 ): Promise<{ user: User | null; error: string | null }> => {
   try {
-    // Sign in with Supabase Auth using mobile as email
-    const email = `${mobileNumber}@vimeet.app`;
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    // Use mobile number as email format
+    const email = `${mobileNumber}@printapp.local`;
+
+    // Sign in with Supabase auth
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
-      password
+      password,
     });
 
-    if (authError) {
-      return { user: null, error: "Invalid mobile number or password" };
-    }
-    if (!authData.user) {
-      return { user: null, error: "Invalid mobile number or password" };
+    if (signInError) {
+      return { user: null, error: "Invalid credentials" };
     }
 
-    // Fetch profile
+    if (!data.user) {
+      return { user: null, error: "Login failed" };
+    }
+
+    // Fetch user profile
     const { data: profile } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", authData.user.id)
+      .eq("id", data.user.id)
       .single();
 
-    // Get user role
+    // Fetch user role
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
-      .eq("user_id", authData.user.id)
-      .maybeSingle();
+      .eq("user_id", data.user.id)
+      .single();
 
-    return { 
+    return {
       user: {
-        id: authData.user.id,
+        id: data.user.id,
         name: profile?.name || '',
         mobile_number: profile?.mobile_number || '',
-        role: roleData?.role || 'user'
-      }, 
-      error: null 
+        role: roleData?.role || 'user',
+      },
+      error: null,
     };
-  } catch (error: any) {
-    console.error("Login error:", error);
-    return { user: null, error: "Login failed. Please try again." };
+  } catch (err) {
+    return { user: null, error: "An unexpected error occurred during login" };
   }
 };
