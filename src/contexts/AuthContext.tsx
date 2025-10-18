@@ -16,61 +16,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Helper function to fetch user data
+    const fetchUserData = async (userId: string) => {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", userId)
+          .maybeSingle();
+
+        const { data: roleData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        return {
+          id: userId,
+          name: profile?.name || '',
+          mobile_number: profile?.mobile_number || '',
+          role: roleData?.role || 'user'
+        };
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        return null;
+      }
+    };
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         if (session?.user) {
-          // Fetch user profile and role
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", session.user.id)
-            .maybeSingle();
-
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .maybeSingle();
-
-          setUser({
-            id: session.user.id,
-            name: profile?.name || '',
-            mobile_number: profile?.mobile_number || '',
-            role: roleData?.role || 'user'
-          });
+          // Defer async calls to prevent deadlock
+          setTimeout(() => {
+            fetchUserData(session.user.id).then((userData) => {
+              if (userData) {
+                setUser(userData);
+              }
+              setIsLoading(false);
+            });
+          }, 0);
         } else {
           setUser(null);
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        // Fetch user profile and role
-        supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", session.user.id)
-          .maybeSingle()
-          .then(({ data: profile }) => {
-            supabase
-              .from("user_roles")
-              .select("role")
-              .eq("user_id", session.user.id)
-              .maybeSingle()
-              .then(({ data: roleData }) => {
-                setUser({
-                  id: session.user.id,
-                  name: profile?.name || '',
-                  mobile_number: profile?.mobile_number || '',
-                  role: roleData?.role || 'user'
-                });
-                setIsLoading(false);
-              });
-          });
+        fetchUserData(session.user.id).then((userData) => {
+          if (userData) {
+            setUser(userData);
+          }
+          setIsLoading(false);
+        });
       } else {
         setIsLoading(false);
       }

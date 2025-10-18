@@ -77,6 +77,16 @@ export const loginUser = async (
   password: string
 ): Promise<{ user: User | null; error: string | null }> => {
   try {
+    // Validate mobile number
+    if (!mobileNumber || mobileNumber.length < 10) {
+      return { user: null, error: "Please enter a valid 10-digit mobile number" };
+    }
+
+    // Validate password
+    if (!password || password.length < 6) {
+      return { user: null, error: "Password must be at least 6 characters" };
+    }
+
     // Use mobile number as email format
     const email = `${mobileNumber}@printapp.local`;
 
@@ -87,26 +97,41 @@ export const loginUser = async (
     });
 
     if (signInError) {
-      return { user: null, error: "Invalid credentials" };
+      // Provide user-friendly error messages
+      if (signInError.message.includes("Invalid login credentials")) {
+        return { user: null, error: "Invalid mobile number or password" };
+      }
+      if (signInError.message.includes("Email not confirmed")) {
+        return { user: null, error: "Please confirm your email before logging in" };
+      }
+      return { user: null, error: "Login failed. Please try again." };
     }
 
     if (!data.user) {
-      return { user: null, error: "Login failed" };
+      return { user: null, error: "Login failed. Please try again." };
     }
 
     // Fetch user profile
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", data.user.id)
-      .single();
+      .maybeSingle();
+
+    if (profileError) {
+      console.error("Error fetching profile:", profileError);
+    }
 
     // Fetch user role
-    const { data: roleData } = await supabase
+    const { data: roleData, error: roleError } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", data.user.id)
-      .single();
+      .maybeSingle();
+
+    if (roleError) {
+      console.error("Error fetching role:", roleError);
+    }
 
     return {
       user: {
@@ -118,6 +143,7 @@ export const loginUser = async (
       error: null,
     };
   } catch (err) {
-    return { user: null, error: "An unexpected error occurred during login" };
+    console.error("Login error:", err);
+    return { user: null, error: "An unexpected error occurred. Please try again." };
   }
 };
