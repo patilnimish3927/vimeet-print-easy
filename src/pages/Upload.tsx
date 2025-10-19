@@ -53,10 +53,15 @@ export default function Upload() {
   const countPdfPages = async (file: File): Promise<number> => {
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdfDoc = await PDFDocument.load(arrayBuffer);
+      const pdfDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
       return pdfDoc.getPageCount();
     } catch (error) {
       console.error("Error counting pages:", error);
+      toast({
+        variant: "destructive",
+        title: "PDF Error",
+        description: `Failed to process ${file.name}. Please try another file.`
+      });
       return 0;
     }
   };

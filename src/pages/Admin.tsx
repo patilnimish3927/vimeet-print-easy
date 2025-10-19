@@ -20,7 +20,7 @@ interface PrintJob {
   total_pages: number;
   print_instructions: string;
   status: string;
-  users: {
+  profiles: {
     name: string;
     mobile_number: string;
   };
@@ -56,7 +56,7 @@ export default function Admin() {
       .from("print_jobs")
       .select(`
         *,
-        users (name, mobile_number)
+        profiles (name, mobile_number)
       `)
       .eq("status", "Pending")
       .order("submission_timestamp", { ascending: false });
@@ -255,8 +255,8 @@ export default function Admin() {
                       <TableBody>
                         {jobs.map((job) => (
                           <TableRow key={job.id}>
-                            <TableCell>{job.users.name}</TableCell>
-                            <TableCell>{job.users.mobile_number}</TableCell>
+                            <TableCell>{job.profiles.name}</TableCell>
+                            <TableCell>{job.profiles.mobile_number}</TableCell>
                             <TableCell>
                               {new Date(job.submission_timestamp).toLocaleString()}
                             </TableCell>
