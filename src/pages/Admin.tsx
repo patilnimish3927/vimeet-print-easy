@@ -155,7 +155,7 @@ export default function Admin() {
   const handleSaveSettings = async () => {
     try {
       // Upload QR code if provided
-      let qrCodeUrl = "";
+      let qrCodePath = "";
       if (qrCodeFile) {
         const filePath = `qr-codes/${Date.now()}-${qrCodeFile.name}`;
         const { error: uploadError } = await supabase.storage
@@ -164,11 +164,7 @@ export default function Admin() {
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from("print-files")
-          .getPublicUrl(filePath);
-
-        qrCodeUrl = publicUrl;
+        qrCodePath = filePath;
       }
 
       // Update settings
@@ -177,8 +173,8 @@ export default function Admin() {
         { setting_key: "contact_number", setting_value: contactNumber }
       ];
 
-      if (qrCodeUrl) {
-        updates.push({ setting_key: "qr_code_url", setting_value: qrCodeUrl });
+      if (qrCodePath) {
+        updates.push({ setting_key: "qr_code_url", setting_value: qrCodePath });
       }
 
       for (const update of updates) {

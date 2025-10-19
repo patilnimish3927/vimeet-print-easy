@@ -48,12 +48,15 @@ export default function Upload() {
         return acc;
       }, {});
       
-      // Get public URL for QR code if it exists
+      // Get signed URL for QR code if it exists
       if (settings.qr_code_url) {
-        const { data: { publicUrl } } = supabase.storage
-          .from("qr-codes")
-          .getPublicUrl(settings.qr_code_url);
-        settings.qr_code_url = publicUrl;
+        const { data: signedUrlData } = await supabase.storage
+          .from("print-files")
+          .createSignedUrl(settings.qr_code_url, 31536000); // 1 year expiry
+        
+        if (signedUrlData) {
+          settings.qr_code_url = signedUrlData.signedUrl;
+        }
       }
       
       setAppSettings(settings);
