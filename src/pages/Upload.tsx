@@ -22,6 +22,7 @@ export default function Upload() {
   const [instructions, setInstructions] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [submittedPages, setSubmittedPages] = useState(0);
   const [appSettings, setAppSettings] = useState<any>(null);
 
   useEffect(() => {
@@ -113,6 +114,7 @@ export default function Upload() {
     }
 
     setIsUploading(true);
+    const submittedPages = totalPages; // Save before resetting
 
     try {
       // Create print job
@@ -120,7 +122,7 @@ export default function Upload() {
         .from("print_jobs")
         .insert({
           user_id: user!.id,
-          total_pages: totalPages,
+          total_pages: submittedPages,
           print_instructions: instructions,
           status: "Pending"
         })
@@ -157,14 +159,15 @@ export default function Upload() {
         title: "Success!",
         description: "Your print job has been submitted successfully"
       });
-
-      // Show payment modal
-      setShowPayment(true);
       
       // Reset form
       setFiles([]);
       setTotalPages(0);
       setInstructions("");
+      
+      // Show payment modal with saved page count
+      setSubmittedPages(submittedPages);
+      setShowPayment(true);
       
     } catch (error: any) {
       toast({
@@ -279,7 +282,7 @@ export default function Upload() {
       <PaymentModal
         open={showPayment}
         onClose={() => setShowPayment(false)}
-        totalPages={totalPages}
+        totalPages={submittedPages}
         qrCodeUrl={appSettings?.qr_code_url}
         upiId={appSettings?.upi_id}
         contactNumber={appSettings?.contact_number}
