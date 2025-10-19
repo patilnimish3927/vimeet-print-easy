@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { QrCode, Phone, CreditCard } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -30,6 +30,9 @@ export const PaymentModal = ({
         <DialogContent className="sm:max-w-md max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center">Payment Information</DialogTitle>
+            <DialogDescription className="sr-only">
+              View payment details including total cost, UPI ID, and contact information
+            </DialogDescription>
           </DialogHeader>
           
           <ScrollArea className="max-h-[70vh] pr-4">
@@ -92,6 +95,9 @@ export const PaymentModal = ({
         <DialogContent className="sm:max-w-lg max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-center">Payment QR Code</DialogTitle>
+            <DialogDescription className="sr-only">
+              Scan this QR code to complete the payment
+            </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[70vh]">
             <div className="flex flex-col items-center gap-4 p-4">
